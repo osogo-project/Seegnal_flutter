@@ -10,7 +10,80 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   _cameras = await availableCameras();
-  runApp(const CameraApp());
+  runApp(const MyApp());
+}
+
+class MyApp extends StatelessWidget {
+  const MyApp({Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Camera App',
+      theme: ThemeData(
+        primarySwatch: Colors.blue,
+      ),
+      home: const HomePage(),
+      debugShowCheckedModeBanner: false,
+    );
+  }
+}
+
+class HomePage extends StatefulWidget {
+  const HomePage({Key? key}) : super(key: key);
+
+  @override
+  _HomePageState createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  String _selectedOption = '';
+
+  final List<String> _menuOptions = [
+    'Option 1',
+    'Option 2',
+    'Camera',
+  ];
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Home Page'),
+      ),
+      body: Center(
+        child: ElevatedButton(
+          onPressed: _showMenu,
+          child: const Text('Show Menu'),
+        ),
+      ),
+    );
+  }
+
+  void _showMenu() {
+    showMenu(
+      context: context,
+      position: const RelativeRect.fromLTRB(25, 100, 0, 0),
+      items: _menuOptions.map((option) {
+        return PopupMenuItem<String>(
+          value: option,
+          child: Text(option),
+        );
+      }).toList(),
+    ).then((selectedOption) {
+      if (selectedOption != null) {
+        setState(() {
+          _selectedOption = selectedOption;
+          if (_selectedOption == 'Camera') {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const CameraApp()),
+            );
+          }
+        });
+      }
+    });
+  }
 }
 
 class CameraApp extends StatefulWidget {
@@ -50,6 +123,7 @@ class _CameraAppState extends State<CameraApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       home: Scaffold(
         body: FutureBuilder<void>(
           future: _initializeControllerFuture,
