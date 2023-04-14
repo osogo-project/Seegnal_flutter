@@ -10,80 +10,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   _cameras = await availableCameras();
-  runApp(const MyApp());
-}
-
-class MyApp extends StatelessWidget {
-  const MyApp({Key? key}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Camera App',
-      theme: ThemeData(
-        primarySwatch: Colors.blue,
-      ),
-      home: const HomePage(),
-      debugShowCheckedModeBanner: false,
-    );
-  }
-}
-
-class HomePage extends StatefulWidget {
-  const HomePage({Key? key}) : super(key: key);
-
-  @override
-  _HomePageState createState() => _HomePageState();
-}
-
-class _HomePageState extends State<HomePage> {
-  String _selectedOption = '';
-
-  final List<String> _menuOptions = [
-    'Option 1',
-    'Option 2',
-    'Camera',
-  ];
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Home Page'),
-      ),
-      body: Center(
-        child: ElevatedButton(
-          onPressed: _showMenu,
-          child: const Text('Show Menu'),
-        ),
-      ),
-    );
-  }
-
-  void _showMenu() {
-    showMenu(
-      context: context,
-      position: const RelativeRect.fromLTRB(25, 100, 0, 0),
-      items: _menuOptions.map((option) {
-        return PopupMenuItem<String>(
-          value: option,
-          child: Text(option),
-        );
-      }).toList(),
-    ).then((selectedOption) {
-      if (selectedOption != null) {
-        setState(() {
-          _selectedOption = selectedOption;
-          if (_selectedOption == 'Camera') {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const CameraApp()),
-            );
-          }
-        });
-      }
-    });
-  }
+  runApp(const CameraApp());
 }
 
 class CameraApp extends StatefulWidget {
@@ -100,10 +27,11 @@ class _CameraAppState extends State<CameraApp> {
   @override
   void initState() {
     super.initState();
+    _initializeControllerFuture = Future.value(null);
     initializeCameraController();
   }
 
-  void initializeCameraController() async {
+  Future<void> initializeCameraController() async {
     Directory directory = await getApplicationDocumentsDirectory();
     _controller = CameraController(_cameras[0], ResolutionPreset.max);
     _initializeControllerFuture = _controller.initialize().then((_) {
@@ -129,7 +57,11 @@ class _CameraAppState extends State<CameraApp> {
           future: _initializeControllerFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.done) {
-              return CameraPreview(_controller);
+              if (_controller.value.isInitialized) {
+                return CameraPreview(_controller);
+              } else {
+                return Center(child: CircularProgressIndicator());
+              }
             } else {
               return Center(child: CircularProgressIndicator());
             }
@@ -138,8 +70,18 @@ class _CameraAppState extends State<CameraApp> {
         floatingActionButton: FloatingActionButton(
           child: Icon(Icons.camera_alt),
           onPressed: () async {
+            if (_initializeControllerFuture == null){
+              return;
+            }
             try {
               await _initializeControllerFuture;
+              if(!_controller.value.isInitialized){
+                // Show an error message if the preview stream is not initialized.
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Error: Camera preview stream not initialized.')),
+                );
+                return;
+              }
               final path = join(
                 (await getTemporaryDirectory()).path,
                 '${DateTime.now()}.png',
